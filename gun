@@ -1,0 +1,85 @@
+-- local script
+local tool = script.Parent
+local player = game.Players.LocalPlayer
+local mouse = game.Players.LocalPlayer:GetMouse()
+local event = tool.RemoteEvent
+
+local KillEvent = tool.Kill
+
+local CoolDown = 0.5
+local DeBounce = false
+
+tool.Activated:Connect(function()
+	if DeBounce then return end
+	
+	DeBounce = true
+	--event:FireServer(mouse.Hit.Position)
+	remotefunCtion:InvokeServer(mouse.Hit.Position)
+	
+	task.wait(CoolDown)
+	DeBounce = false
+end)
+--------------------
+-- normal script
+local tool = script.Parent
+local handle = tool:WaitForChild("Handle")
+local fire_point = handle:WaitForChild("FirePoint")
+
+local tweenservice = game:GetService("TweenService")
+
+local remote_event = tool:WaitForChild("RemoteEvent")
+
+local BULLET_SPEED = 100
+
+local function visualise(A, B,direction, rayResult)
+	local distance = (B-A).Magnitude
+	local TravelTime = distance / BULLET_SPEED
+	local midPoint = A + direction * 0.5
+	local position = if rayResult then B else A + direction
+	
+	local visual = Instance.new("Part")
+	visual.BrickColor = BrickColor.new("Yellow flip/flop")
+	visual.Material = Enum.Material.Neon
+	visual.Transparency = 0.2
+	visual.Anchored = true
+	visual.Size = Vector3.new(0.1,0.1,0.3)
+	visual.CanCollide, visual.CanTouch, visual.CanQuery, visual.CastShadow = false,false,false,false
+	visual.Name = "bullet"
+	visual.CFrame = CFrame.lookAt(midPoint, position) * CFrame.Angles(0, math.rad(90), 0)
+	visual.Parent = workspace
+	
+	local tween = tweenservice:Create(
+		visual,
+		TweenInfo.new(TravelTime, Enum.EasingStyle.Linear),
+		{Position = B}
+	)
+	
+	tween:Play()
+	
+	tween.Completed:Connect(function()
+		visual:Destroy()
+	end)
+end
+
+remote_event.OnServerEvent:Connect(function(player, mouse_position) 
+	-- cast ray
+	local origin = fire_point.WorldPosition
+	local direction = (mouse_position - origin).Unit
+	local distance = 100
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = {tool.Parent}
+
+	local result = workspace:Raycast(origin, direction*distance, params)
+
+	if result then
+		visualise(origin, result.Position, direction, result)
+
+		local hit = result.Instance
+		if hit.Parent:FindFirstChild("Humanoid") then
+			hit.Parent:FindFirstChild("Humanoid"):TakeDamage(20)
+		end
+	else
+		visualise(origin, origin + direction * distance, direction, nil)	end
+end)
