@@ -1,0 +1,129 @@
+local LobbyTime = 10
+local Intermision = 10
+local RoundTime = 120
+
+local enable = game.ReplicatedStorage.Remotes.EnableCamera
+local UnEnable = game.ReplicatedStorage.Remotes.UnEnableCamera
+
+
+local WaveSystem = require(game.ServerScriptService.SystemsHandler.WaveSystem)
+local Players = game:GetService("Players")
+local Zombies = game.Workspace.Zombies
+-- PLAYER TELEPORT ----------
+local function TeleportPlayers(teleFolder)
+	local spawnParts = teleFolder:GetChildren()
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		local char = player.Character
+
+		if char then
+			local randomPart = spawnParts[math.random(1, #spawnParts)]
+			char:PivotTo(randomPart.CFrame + Vector3.new(0, 3, 0))
+		end
+	end
+end
+------------------------------
+--------GIVE PLAYER WEPON------
+local function GiveWepon()
+	for _, player in ipairs(Players:GetPlayers()) do
+		local rifle = game.ReplicatedStorage.Wepons.Guns.Rifle:Clone()
+		local NormalPistol = game.ReplicatedStorage.Wepons.Guns.Pistol:Clone()
+		
+		task.wait(0.5)
+		
+		rifle.Parent = player.Backpack
+		NormalPistol.Parent = player.Backpack
+	end
+end
+
+---------------------------------
+--------- TAKE PLAYER WEPON-----------
+local function TakeWepon()
+	local weaponsToRemove = {"Rifle", "FirePistol", "Pistol"}
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		for _, weaponName in ipairs(weaponsToRemove) do
+			-- Check inside Backpack (unequipped tools)
+			local backpackTool = player.Backpack:FindFirstChild(weaponName)
+			if backpackTool then
+				backpackTool:Destroy()
+			end
+
+			-- Check inside Character (currently equipped tool)
+			if player.Character then
+				local equippedTool = player.Character:FindFirstChild(weaponName)
+				if equippedTool then
+					equippedTool:Destroy()
+				end
+			end
+		end
+	end
+end
+
+------ CHECK IF ALL PLAYERS DIED--------
+local function AllPlayersDead()
+
+	for _, player in pairs(Players:GetPlayers()) do
+
+		local character = player.Character
+		local humanoid = character and character:FindFirstChild("Humanoid")
+
+		if humanoid and humanoid.Health > 0 then
+			return false
+		end
+
+	end
+
+	return true
+end
+---------------------------------
+
+while true do
+	
+	print("Lobby waiting")
+	task.wait(LobbyTime)
+	
+	print("intermoision")
+	task.wait(Intermision)
+	
+	print("Round began")
+	-- RANDOM MAP------
+	local RandomMap = {
+		game.ReplicatedStorage.Maps.City,
+		game.ReplicatedStorage.Maps.Desert,
+		game.ReplicatedStorage.Maps.Ice
+	}
+	local ChoosenMap = RandomMap[math.random(1, #RandomMap)]:Clone()
+	ChoosenMap.Parent = game.Workspace
+	-------------------------------------
+	TeleportPlayers(ChoosenMap.SpawnPart)
+	enable:FireAllClients()
+	GiveWepon()
+	
+	local waveThread = task.spawn(function()
+		WaveSystem.Zombies(RoundTime, ChoosenMap.SpawnPart, ChoosenMap.Name)
+	end)
+	
+	
+	for timeLeft = RoundTime , 1, -1 do
+		print(timeLeft)
+		if AllPlayersDead() then
+			print("All players died! Round ended.")
+			task.cancel(waveThread)
+			UnEnable:FireAllClients()
+			break
+		end
+		task.wait(1)
+	end
+	
+	print("Round Ended")
+	TeleportPlayers(game.Workspace.LobbySpawns)
+	TakeWepon()
+	UnEnable:FireAllClients()
+	ChoosenMap:Destroy()
+	
+	Zombies:ClearAllChildren()
+	
+	task.wait(2)
+	
+end
