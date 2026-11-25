@@ -1,0 +1,25 @@
+local ZombieRarity = {
+	Normal = {
+		Chance = 70,
+		Zombie = "NormalZombie"
+	},
+
+	Rare = {
+		Chance = 20,
+		Zombie = "TankyZombie"
+	},
+
+	Epic = {
+		Chance = 8,
+		Zombie = "SpecialZombie"
+	},
+
+	Legendary = {
+		Chance = 2,
+		Zombie = "BossZombie"
+	}
+}
+
+
+
+return ZombieRarity
